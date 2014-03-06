@@ -60,8 +60,9 @@ module VCloudCloud
         s.next Steps::Instantiate, catalog_vapp_id, vapp_name, description, disk_locality
         client.flush_cache  # flush cached vdc which contains vapp list
         vapp = s.state[:vapp]
-        vm = s.state[:vm] = vapp.vms[0]
+        vm = vapp.vms[0]
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        s.state[:vm] = vm
 
         # save original disk configuration
         s.state[:disks] = Array.new(vm.hardware_section.hard_disks)
@@ -138,8 +139,9 @@ module VCloudCloud
 
     def reboot_vm(vm_id)
       steps "reboot_vm(#{vm_id})" do |s|
-        vm = s.state[:vm] = client.resolve_entity(vm_id)
+        vm = client.resolve_entity(vm_id)
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        s.state[:vm] = vm
 
         @vapp_lock.synchronize do
           if vm['status'] == VCloudSdk::Xml::RESOURCE_ENTITY_STATUS[:SUSPENDED].to_s
@@ -172,8 +174,9 @@ module VCloudCloud
 
     def delete_vm(vm_id)
       steps "delete_vm(#{vm_id})" do |s|
-        vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = client.resolve_entity vm_id
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        s.state[:vm] = vm
 
         @vapp_lock.synchronize do
           # poweroff vm before we are able to delete it
@@ -198,8 +201,9 @@ module VCloudCloud
 
     def configure_networks(vm_id, networks)
       steps "configure_networks(#{vm_id}, #{networks})" do |s|
-        vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = client.resolve_entity vm_id
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        s.state[:vm] = vm
 
         @vapp_lock.synchronize do
           # power off vm first
@@ -213,7 +217,9 @@ module VCloudCloud
           # update environment
           s.state[:env_metadata_key] = @entities['vm_metadata_key']
           s.next Steps::LoadAgentEnv
-          vm = s.state[:vm] = client.reload vm
+          vm = client.reload vm
+          vm = vm.vms[0] if vm.respond_to?(:vms)
+          s.state[:vm] = vm
           Steps::CreateOrUpdateAgentEnv.update_network_env s.state[:env], vm, networks
 
           save_agent_env s
@@ -234,8 +240,9 @@ module VCloudCloud
 
     def attach_disk(vm_id, disk_id)
       steps "attach_disk(#{vm_id}, #{disk_id})" do |s|
-        vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = client.resolve_entity vm_id
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        s.state[:vm] = vm
 
         # vm.hardware_section will change, save current state of disks
         previous_disks_list = Array.new(vm.hardware_section.hard_disks)
@@ -249,7 +256,9 @@ module VCloudCloud
           s.state[:env_metadata_key] = @entities['vm_metadata_key']
           s.next Steps::LoadAgentEnv
 
-          vm = s.state[:vm] = client.reload vm
+          vm = client.reload vm
+          vm = vm.vms[0] if vm.respond_to?(:vms)
+          vm = s.state[:vm]
           Steps::CreateOrUpdateAgentEnv.update_persistent_disk s.state[:env], vm, disk_id , previous_disks_list
 
           save_agent_env s
@@ -259,8 +268,9 @@ module VCloudCloud
 
     def detach_disk(vm_id, disk_id)
       steps "detach_disk(#{vm_id}, #{disk_id})" do |s|
-        vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = client.resolve_entity vm_id
         vm = vm.vms[0] if vm.respond_to?(:vms)
+        vm = s.state[:vm]
         
         s.state[:disk] = client.resolve_entity disk_id
         # if disk is not attached, just ignore
