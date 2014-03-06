@@ -139,6 +139,7 @@ module VCloudCloud
     def reboot_vm(vm_id)
       steps "reboot_vm(#{vm_id})" do |s|
         vm = s.state[:vm] = client.resolve_entity(vm_id)
+        vm = vm.vms[0] if vm.respond_to?(:vms)
 
         @vapp_lock.synchronize do
           if vm['status'] == VCloudSdk::Xml::RESOURCE_ENTITY_STATUS[:SUSPENDED].to_s
@@ -172,6 +173,7 @@ module VCloudCloud
     def delete_vm(vm_id)
       steps "delete_vm(#{vm_id})" do |s|
         vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = vm.vms[0] if vm.respond_to?(:vms)
 
         @vapp_lock.synchronize do
           # poweroff vm before we are able to delete it
@@ -197,6 +199,7 @@ module VCloudCloud
     def configure_networks(vm_id, networks)
       steps "configure_networks(#{vm_id}, #{networks})" do |s|
         vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = vm.vms[0] if vm.respond_to?(:vms)
 
         @vapp_lock.synchronize do
           # power off vm first
@@ -232,6 +235,7 @@ module VCloudCloud
     def attach_disk(vm_id, disk_id)
       steps "attach_disk(#{vm_id}, #{disk_id})" do |s|
         vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = vm.vms[0] if vm.respond_to?(:vms)
 
         # vm.hardware_section will change, save current state of disks
         previous_disks_list = Array.new(vm.hardware_section.hard_disks)
@@ -256,6 +260,8 @@ module VCloudCloud
     def detach_disk(vm_id, disk_id)
       steps "detach_disk(#{vm_id}, #{disk_id})" do |s|
         vm = s.state[:vm] = client.resolve_entity vm_id
+        vm = vm.vms[0] if vm.respond_to?(:vms)
+        
         s.state[:disk] = client.resolve_entity disk_id
         # if disk is not attached, just ignore
         next unless vm.find_attached_disk s.state[:disk]
