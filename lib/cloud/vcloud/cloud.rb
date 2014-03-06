@@ -61,6 +61,7 @@ module VCloudCloud
         client.flush_cache  # flush cached vdc which contains vapp list
         vapp = s.state[:vapp]
         vm = s.state[:vm] = vapp.vms[0]
+        vm = vm.vms[0] if vm.respond_to?(:vms)
 
         # save original disk configuration
         s.state[:disks] = Array.new(vm.hardware_section.hard_disks)
